@@ -1,0 +1,26 @@
+[
+  {
+    "id": "05b1a32c-b867-4415-b374-aef654f42484",
+    "recipientEmail": "recipient@example.com",
+    "subject": "Meeting Reminder",
+    "body": "Don't forget our meeting tomorrow at 2 PM.",
+    "scheduledTime": "2025-04-11T10:03:33.000Z",
+    "status": "sent"
+  },
+  {
+    "id": "4cafe495-a012-4b6f-be2c-b4a70bf1867b",
+    "recipientEmail": "wubideqi@mailinator.com",
+    "subject": "Lorem sit in deseru",
+    "body": "Saepe rem aut occaec",
+    "scheduledTime": "2025-04-11T10:08:00.000Z",
+    "status": "sent"
+  },
+  {
+    "id": "d574240a-d8f4-4b7f-81b0-458db8cf0b5a",
+    "recipientEmail": "pole@mailinator.com",
+    "subject": "Impedit ut fugit c",
+    "body": "Numquam mollitia odi",
+    "scheduledTime": "2025-04-11T10:16:00.000Z",
+    "status": "sent"
+  }
+]
