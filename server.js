@@ -8,39 +8,49 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 7845;
 const DATA_FILE = path.join(__dirname, 'data', 'emails.json');
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Ensure data directory exists
-async function ensureDataDir() {
+// Ensure data directory and file exist
+async function ensureDataFile() {
   const dir = path.join(__dirname, 'data');
   try {
     await fs.access(dir);
   } catch {
     await fs.mkdir(dir, { recursive: true });
   }
+
+  try {
+    await fs.access(DATA_FILE);
+  } catch {
+    await fs.writeFile(DATA_FILE, JSON.stringify([]));
+  }
 }
 
 // Load emails from JSON file
 async function loadEmails() {
-  await ensureDataDir();
+  await ensureDataFile();
   try {
-    await fs.access(DATA_FILE);
     const data = await fs.readFile(DATA_FILE, 'utf8');
     return JSON.parse(data);
-  } catch {
+  } catch (error) {
+    console.error('Error loading emails:', error);
     return [];
   }
 }
 
 // Save emails to JSON file
 async function saveEmails(emails) {
-  await ensureDataDir();
-  await fs.writeFile(DATA_FILE, JSON.stringify(emails, null, 2));
+  await ensureDataFile();
+  try {
+    await fs.writeFile(DATA_FILE, JSON.stringify(emails, null, 2));
+  } catch (error) {
+    console.error('Error saving emails:', error);
+  }
 }
 
 // Mock function to send an email
@@ -51,8 +61,7 @@ async function sendEmail(email) {
   console.log(`Body: ${email.body}`);
   console.log(`Sent at: ${new Date().toISOString()}`);
   console.log('-----------------------------------');
-  
-  // In a real application, you would use nodemailer or a similar library here
+
   return { ...email, status: 'sent' };
 }
 
@@ -60,43 +69,38 @@ async function sendEmail(email) {
 app.post('/schedule', async (req, res) => {
   try {
     const { recipientEmail, subject, body, scheduledTime } = req.body;
-    
-    // Validate required fields
+
     if (!recipientEmail || !subject || !body || !scheduledTime) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
-    
-    // Validate email format
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(recipientEmail)) {
       return res.status(400).json({ message: 'Invalid email format' });
     }
-    
-    // Validate scheduled time is in the future
+
     const scheduledDate = new Date(scheduledTime);
     if (isNaN(scheduledDate.getTime())) {
       return res.status(400).json({ message: 'Invalid date format' });
     }
-    
+
     if (scheduledDate < new Date()) {
       return res.status(400).json({ message: 'Scheduled time must be in the future' });
     }
-    
-    // Create email object
+
     const email = {
       id: uuidv4(),
       recipientEmail,
       subject,
       body,
       scheduledTime: scheduledDate.toISOString(),
-      status: 'pending'
+      status: 'pending',
     };
-    
-    // Add email to storage
+
     const emails = await loadEmails();
     emails.push(email);
     await saveEmails(emails);
-    
+
     res.status(201).json({ message: 'Email scheduled successfully', email });
   } catch (error) {
     console.error('Error scheduling email:', error);
@@ -121,18 +125,18 @@ async function checkScheduledEmails() {
     const emails = await loadEmails();
     const now = new Date();
     let updated = false;
-    
+
     for (let i = 0; i < emails.length; i++) {
       if (emails[i].status === 'pending') {
         const scheduledTime = new Date(emails[i].scheduledTime);
-        
+
         if (scheduledTime <= now) {
           emails[i] = await sendEmail(emails[i]);
           updated = true;
         }
       }
     }
-    
+
     if (updated) {
       await saveEmails(emails);
     }
@@ -143,17 +147,16 @@ async function checkScheduledEmails() {
 
 // Initialize the scheduler
 function initializeScheduler() {
-  // Run the scheduler every minute
   cron.schedule('* * * * *', async () => {
     await checkScheduledEmails();
   });
-  
-  console.log('Email scheduler initialized');
+
+  console.log('✅ Email scheduler initialized');
 }
 
 // Start the server
 app.listen(PORT, async () => {
-  await ensureDataDir();
+  await ensureDataFile();
   initializeScheduler();
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
